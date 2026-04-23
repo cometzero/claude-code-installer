@@ -33,7 +33,8 @@ function Normalize-Tag([string]$Value) {
 
 function Resolve-Tag([string]$Requested) {
     if ([string]::IsNullOrWhiteSpace($Requested) -or $Requested -eq "latest" -or $Requested -eq "stable") {
-        return (Invoke-RestMethod -Uri "$ApiBase/releases/latest").tag_name
+        $AliasName = if ([string]::IsNullOrWhiteSpace($Requested)) { "latest" } else { $Requested }
+        return (Invoke-RestMethod -Uri "$DownloadBase/$AliasName/alias.json").target_tag
     }
     $Normalized = Normalize-Tag $Requested
     return (Invoke-RestMethod -Uri "$ApiBase/releases/tags/$Normalized").tag_name

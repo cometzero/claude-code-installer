@@ -68,3 +68,22 @@ jobs:
           gh release create "$TAG" "${ASSETS[@]}" \
             --title "$TAG" \
             --notes-file dist/release-notes.md
+
+      - name: Publish alias releases
+        run: |
+          set -euo pipefail
+          SOURCE_RELEASE=$(python3 - <<'PY'
+          import json
+          print(json.load(open('dist/release-meta.json'))['source_release'])
+          PY
+          )
+          python3 scripts/publish_alias_release.py \
+            --alias latest \
+            --target-tag "$TAG" \
+            --source-release "$SOURCE_RELEASE" \
+            --manifest-path dist/manifest.json
+          python3 scripts/publish_alias_release.py \
+            --alias stable \
+            --target-tag "$TAG" \
+            --source-release "$SOURCE_RELEASE" \
+            --manifest-path dist/manifest.json

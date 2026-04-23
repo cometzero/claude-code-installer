@@ -24,6 +24,16 @@ The binaries are **not committed to git history**. They only live as release ass
 
 ## Install
 
+Default install resolves the moving `latest` alias release, then downloads the actual versioned binary assets from that mirrored version tag.
+
+The repository also maintains lightweight alias releases:
+
+- `latest` → current mirrored latest release
+- `stable` → current mirrored stable release
+
+These alias releases only contain `alias.json` metadata; the large binaries remain attached only to versioned tags like `v2.1.118`.
+
+
 ### macOS / Linux
 
 ```bash
@@ -65,6 +75,8 @@ Specific target:
 ## Automation
 
 The workflow `.github/workflows/sync-upstream-release.yml` checks upstream Claude Code releases on a schedule and creates a same-tag mirror release in this repository when a new upstream release appears.
+
+After that, it also refreshes lightweight `latest` and `stable` alias releases so installer scripts can resolve those names without relying on GitHub's `releases/latest` semantics.
 
 You can also run it manually with `workflow_dispatch` and optionally provide a specific tag.
 

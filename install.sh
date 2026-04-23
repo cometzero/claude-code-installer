@@ -71,15 +71,20 @@ resolve_tag() {
   local response
 
   if [[ -z "$requested" || "$requested" == "latest" || "$requested" == "stable" ]]; then
-    response=$(download_file "$API_BASE/releases/latest")
+    local alias_name="${requested:-latest}"
+    response=$(download_file "$DOWNLOAD_BASE/$alias_name/alias.json")
+    if [[ "$HAS_JQ" == true ]]; then
+      echo "$response" | jq -r '.target_tag'
+    else
+      echo "$response" | tr -d '\n\r' | sed -E 's/.*"target_tag"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/'
+    fi
   else
     response=$(download_file "$API_BASE/releases/tags/$(normalize_tag "$requested")")
-  fi
-
-  if [[ "$HAS_JQ" == true ]]; then
-    echo "$response" | jq -r '.tag_name'
-  else
-    echo "$response" | tr -d '\n\r' | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/'
+    if [[ "$HAS_JQ" == true ]]; then
+      echo "$response" | jq -r '.tag_name'
+    else
+      echo "$response" | tr -d '\n\r' | sed -E 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/'
+    fi
   fi
 }
 
