@@ -1,0 +1,38 @@
+name: Validate installer scripts
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Lint install.sh
+        run: shellcheck install.sh
+
+  prepare-release-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Dry-run asset preparation for latest upstream release
+        run: |
+          python3 scripts/prepare_release.py --tag latest --out-dir dist
+          test -f dist/manifest.json
+          test -f dist/release-meta.json
+          python3 - <<'PY'
+          import json
+          meta=json.load(open('dist/release-meta.json'))
+          manifest=json.load(open('dist/manifest.json'))
+          assert meta['tag'] == manifest['tag']
+          assert 'linux-x64' in manifest['platforms']
+          print('validated', meta['tag'])
+          PY

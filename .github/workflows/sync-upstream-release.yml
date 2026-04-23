@@ -1,0 +1,70 @@
+name: Sync upstream Claude Code release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Optional upstream tag to mirror (e.g. v2.1.118 or 2.1.118). Leave blank for latest.'
+        required: false
+        default: ''
+  schedule:
+    - cron: '17 */6 * * *'
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Prepare mirrored assets
+        env:
+          REQUESTED_TAG: ${{ github.event.inputs.tag }}
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p dist
+          python3 scripts/prepare_release.py --tag "${REQUESTED_TAG:-latest}" --out-dir dist
+          python3 - <<'PY'
+          import json, os
+          meta=json.load(open('dist/release-meta.json'))
+          print(f"TAG={meta['tag']}")
+          with open(os.environ['GITHUB_ENV'], 'a') as f:
+              f.write(f"TAG={meta['tag']}\n")
+          PY
+
+      - name: Skip if mirrored release already exists
+        id: check_release
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release $TAG already exists; nothing to do."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create mirrored release
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          set -euo pipefail
+          mapfile -t ASSETS < <(python3 - <<'PY'
+          import json
+          meta=json.load(open('dist/release-meta.json'))
+          for name in meta['assets']:
+              print(f'dist/{name}')
+          PY
+          )
+          gh release create "$TAG" "${ASSETS[@]}" \
+            --title "$TAG" \
+            --notes-file dist/release-notes.md
