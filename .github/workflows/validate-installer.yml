@@ -15,6 +15,14 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y shellcheck
       - name: Lint install.sh
         run: shellcheck install.sh
+      - name: Smoke-test direct mirrored install on Linux
+        run: |
+          set -euo pipefail
+          export HOME=$(mktemp -d)
+          bash ./install.sh latest
+          test -x "$HOME/.local/bin/claude"
+          test -x "$HOME/.claude/native/latest/linux-x64/claude" || test -x "$HOME/.claude/native/latest/linux-arm64/claude" || find "$HOME/.claude/native" -name claude -type f | grep -q .
+          "$HOME/.local/bin/claude" --version
 
   prepare-release-dry-run:
     runs-on: ubuntu-latest
