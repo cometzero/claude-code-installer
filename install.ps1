@@ -17,8 +17,12 @@ $Repo = if ($env:CLAUDE_CODE_INSTALL_REPO) { $env:CLAUDE_CODE_INSTALL_REPO } els
 $ApiBase = "https://api.github.com/repos/$Repo"
 $DownloadBase = "https://github.com/$Repo/releases/download"
 $DownloadDir = "$env:USERPROFILE\.claude\downloads"
+$InstallBaseDir = "$env:USERPROFILE\.claude\native"
+$BinDir = "$env:USERPROFILE\.claude\bin"
 $WorkDir = Join-Path ([System.IO.Path]::GetTempPath()) ([System.Guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Force -Path $DownloadDir | Out-Null
+New-Item -ItemType Directory -Force -Path $InstallBaseDir | Out-Null
+New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
 New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null
 
 function Normalize-Tag([string]$Value) {
@@ -92,14 +96,35 @@ try {
         exit 1
     }
 
-    Write-Output "Setting up Claude Code from $Repo $Tag..."
-    if ($Target) {
-        & $BinaryPath install $Target
-    }
-    else {
-        & $BinaryPath install
+    $InstallDir = Join-Path $InstallBaseDir "$Tag\$Platform"
+    $InstalledBinary = Join-Path $InstallDir "claude.exe"
+    $WrapperCmd = Join-Path $BinDir "claude.cmd"
+    $WrapperPs1 = Join-Path $BinDir "claude.ps1"
+    New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+    Copy-Item -Force $BinaryPath $InstalledBinary
+
+    @"
+@echo off
+set DISABLE_UPDATES=1
+"$InstalledBinary" %*
+"@ | Set-Content -Path $WrapperCmd -Encoding ASCII
+
+    @"
+$env:DISABLE_UPDATES = '1'
+& "$InstalledBinary" @args
+"@ | Set-Content -Path $WrapperPs1 -Encoding UTF8
+
+    $UserPath = [Environment]::GetEnvironmentVariable('Path', 'User')
+    $PathEntries = @()
+    if ($UserPath) { $PathEntries = $UserPath.Split(';', [System.StringSplitOptions]::RemoveEmptyEntries) }
+    if (-not ($PathEntries -contains $BinDir)) {
+        $NewPath = if ($UserPath) { "$UserPath;$BinDir" } else { $BinDir }
+        [Environment]::SetEnvironmentVariable('Path', $NewPath, 'User')
+        Write-Output "Added $BinDir to the user PATH. Open a new shell to use 'claude'."
     }
 
+    Write-Output "Installed Claude Code binary to: $InstalledBinary"
+    Write-Output "Installed launchers to: $WrapperCmd and $WrapperPs1"
     Write-Output ""
     Write-Output "$([char]0x2705) Installation complete!"
     Write-Output ""

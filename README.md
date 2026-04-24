@@ -2,7 +2,7 @@
 
 GitHub-hosted mirror installer for Claude Code.
 
-This repository exists for environments where `claude.ai` / `downloads.claude.ai` is blocked but GitHub Releases is still reachable. It mirrors the official Claude Code release archives from [`anthropics/claude-code`](https://github.com/anthropics/claude-code/releases) into this repository's Releases and provides install scripts that download from this repo instead of `claude.ai`.
+This repository exists for environments where `claude.ai` / `downloads.claude.ai` is blocked but GitHub Releases is still reachable. It mirrors the official Claude Code release archives from [`anthropics/claude-code`](https://github.com/anthropics/claude-code/releases) into this repository's Releases and provides install scripts that download from this repo instead of Anthropic download endpoints. The launcher created by these scripts also sets `DISABLE_UPDATES=1` so later `claude` runs do not try to self-update from Anthropic infrastructure.
 
 ## What is mirrored
 
@@ -69,8 +69,9 @@ Specific target:
 3. Download the matching mirrored archive from this repo's release assets.
 4. Verify the archive checksum against `manifest.json` / upstream `SHASUMS256.txt`.
 5. Extract `claude` / `claude.exe` temporarily.
-6. Run `claude install [target]`.
-7. Delete temporary downloaded artifacts.
+6. Copy the binary into a versioned local install directory.
+7. Create a local launcher (`claude`, `claude.cmd`, `claude.ps1`) that runs the mirrored binary and sets `DISABLE_UPDATES=1` so runtime updates do not fall back to Anthropic download endpoints.
+8. Delete temporary downloaded artifacts.
 
 ## Automation
 

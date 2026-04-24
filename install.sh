@@ -12,6 +12,8 @@ REPO="${CLAUDE_CODE_INSTALL_REPO:-cometzero/claude-code-installer}"
 API_BASE="https://api.github.com/repos/${REPO}"
 DOWNLOAD_BASE="https://github.com/${REPO}/releases/download"
 DOWNLOAD_DIR="${HOME}/.claude/downloads"
+INSTALL_BASE_DIR="${HOME}/.claude/native"
+BIN_DIR="${HOME}/.local/bin"
 WORK_DIR=""
 DOWNLOADER=""
 HAS_JQ=false
@@ -148,7 +150,7 @@ else
   platform="${os}-${arch}"
 fi
 
-mkdir -p "$DOWNLOAD_DIR"
+mkdir -p "$DOWNLOAD_DIR" "$INSTALL_BASE_DIR" "$BIN_DIR"
 WORK_DIR=$(mktemp -d)
 
 TAG=$(resolve_tag "$TARGET")
@@ -215,10 +217,23 @@ if [[ ! -f "$binary_path" ]]; then
   exit 1
 fi
 
-chmod +x "$binary_path"
+install_dir="$INSTALL_BASE_DIR/$TAG/$platform"
+installed_binary="$install_dir/claude"
+wrapper_path="$BIN_DIR/claude"
+mkdir -p "$install_dir"
+install -m 755 "$binary_path" "$installed_binary"
+cat > "$wrapper_path" <<EOF
+#!/usr/bin/env bash
+export DISABLE_UPDATES=1
+exec "$installed_binary" "\$@"
+EOF
+chmod +x "$wrapper_path"
 
-echo "Setting up Claude Code from ${REPO} ${TAG}..."
-"$binary_path" install ${TARGET:+"$TARGET"}
+echo "Installed Claude Code binary to: $installed_binary"
+echo "Installed launcher to: $wrapper_path"
+if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+  echo "Add $BIN_DIR to your PATH to run 'claude' directly."
+fi
 
 echo ""
 echo "✅ Installation complete!"
